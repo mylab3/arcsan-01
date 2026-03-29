@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>MediDocs</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500&family=DM+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:       #0F6E56;
+      --green-light: #E1F5EE;
+      --green-dark:  #085041;
+      --green-text:  #064033;
+      --tp: #1a1a18;
+      --ts: #5a5a56;
+      --tt: #9a9a94;
+      --bg1: #ffffff;
+      --bg2: #f6f6f3;
+      --bg3: #eeeeea;
+      --bd:  rgba(0,0,0,0.09);
+      --bdm: rgba(0,0,0,0.16);
+      --r:  8px;
+      --rl: 12px;
+      --sw: 240px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --tp: #eeeee8;
+        --ts: #aaaaaa;
+        --tt: #666660;
+        --bg1: #1e1e1b;
+        --bg2: #272724;
+        --bg3: #303030;
+        --bd:  rgba(255,255,255,0.09);
+        --bdm: rgba(255,255,255,0.16);
+        --green-light: #0a2e24;
+        --green-text:  #5dcaa5;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--bg3); color: var(--tp); }
+    button, input, select { font-family: inherit; font-size: inherit; }
+
+    /* LOGIN */
+    #login-screen { display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg3); }
+    .login-card { background:var(--bg1); border:0.5px solid var(--bd); border-radius:var(--rl); padding:48px 40px; text-align:center; max-width:360px; width:90%; }
+    .login-logo { width:48px; height:48px; border-radius:12px; background:var(--green); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; }
+    .login-title { font-size:22px; font-weight:500; margin-bottom:8px; }
+    .login-sub { font-size:13px; color:var(--ts); margin-bottom:32px; line-height:1.6; }
+    .login-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:11px 20px; background:var(--green); color:white; border:none; border-radius:var(--r); font-size:14px; font-weight:500; cursor:pointer; transition:background .15s; }
+    .login-btn:hover { background:var(--green-dark); }
+
+    /* APP SHELL */
+    #app { display:none; height:100vh; flex-direction:row; }
+    #app.visible { display:flex; }
+
+    /* SIDEBAR */
+    #sidebar { width:var(--sw); min-width:var(--sw); height:100vh; background:var(--bg2); border-right:0.5px solid var(--bd); display:flex; flex-direction:column; transition:transform .25s; z-index:100; }
+    .sidebar-header { padding:18px 16px 14px; border-bottom:0.5px solid var(--bd); cursor:pointer; transition:background .12s; flex-shrink:0; }
+    .sidebar-header:hover { background:var(--bg1); }
+    .logo-row { display:flex; align-items:center; gap:9px; }
+    .logo-icon { width:28px; height:28px; border-radius:6px; background:var(--green); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .logo-icon svg { width:16px; height:16px; stroke:white; fill:none; stroke-width:1.5; }
+    .logo-name { font-size:14px; font-weight:500; }
+    .logo-count { font-size:11px; color:var(--tt); margin-top:1px; }
+    .sidebar-nav { flex:1; overflow-y:auto; padding:8px 0; }
+    .nav-section-lbl { font-size:10px; font-weight:500; color:var(--tt); letter-spacing:.06em; text-transform:uppercase; padding:10px 16px 4px; }
+    .nav-row { display:flex; align-items:center; cursor:pointer; transition:background .12s; user-select:none; position:relative; }
+    .nav-row:hover { background:var(--bg1); }
+    .nav-row.active { background:var(--bg1); }
+    .nav-row.active::after { content:''; position:absolute; right:0; top:0; bottom:0; width:2px; background:var(--green); }
+    .nav-toggle { width:18px; height:30px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--tt); transition:transform .18s; }
+    .nav-toggle.open { transform:rotate(90deg); }
+    .nav-toggle.leaf { opacity:0; pointer-events:none; }
+    .nav-toggle svg { width:10px; height:10px; fill:none; stroke:currentColor; stroke-width:2; }
+    .nav-text { flex:1; font-size:13px; color:var(--ts); padding:6px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .nav-row.active .nav-text { color:var(--tp); font-weight:500; }
+    .nav-badge { font-size:10px; color:var(--tt); background:var(--bg3); padding:1px 6px; border-radius:10px; margin-right:10px; flex-shrink:0; }
+    .sidebar-footer { padding:12px 14px; border-top:0.5px solid var(--bd); flex-shrink:0; display:flex; gap:8px; }
+    .btn-upload { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:8px 10px; background:var(--green); color:white; border:none; border-radius:var(--r); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .btn-upload:hover { background:var(--green-dark); }
+    .btn-upload svg { width:14px; height:14px; stroke:white; fill:none; stroke-width:1.5; flex-shrink:0; }
+    .btn-gear { width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:none; border:0.5px solid var(--bdm); border-radius:var(--r); cursor:pointer; color:var(--ts); transition:background .12s; flex-shrink:0; }
+    .btn-gear:hover { background:var(--bg1); }
+    .btn-gear svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.5; }
+
+    /* MAIN */
+    #main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+    .topbar { display:flex; align-items:center; gap:8px; padding:0 20px; height:56px; border-bottom:0.5px solid var(--bd); background:var(--bg1); flex-shrink:0; }
+    .topbar-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+    .topbar-breadcrumb { font-size:11px; color:var(--tt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .topbar-title { font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .topbar-right { display:flex; gap:8px; flex-shrink:0; }
+    .btn-sm { display:flex; align-items:center; gap:5px; padding:5px 10px; background:none; border:0.5px solid var(--bdm); border-radius:var(--r); font-size:12px; color:var(--ts); cursor:pointer; transition:background .12s; white-space:nowrap; }
+    .btn-sm:hover { background:var(--bg2); }
+    .btn-sm svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.5; }
+    .btn-sm.primary { background:var(--green); color:white; border-color:transparent; }
+    .btn-sm.primary:hover { background:var(--green-dark); }
+    .btn-sm.primary svg { stroke:white; }
+    #content { flex:1; overflow-y:auto; background:var(--bg1); }
+
+    /* HOME */
+    .home-hero { padding:32px 32px 26px; border-bottom:0.5px solid var(--bd); }
+    .home-hero-row { display:flex; align-items:flex-start; gap:18px; }
+    .home-hero-icon { width:48px; height:48px; border-radius:12px; background:var(--green-light); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .home-hero-icon svg { width:26px; height:26px; stroke:var(--green); fill:none; stroke-width:1.5; }
+    .home-hero-title { font-size:18px; font-weight:500; margin-bottom:6px; letter-spacing:-0.01em; }
+    .home-hero-sub { font-size:13px; color:var(--ts); line-height:1.65; }
+    .home-hint { display:inline-flex; align-items:center; gap:6px; margin-top:14px; background:var(--bg2); border:0.5px solid var(--bd); border-radius:var(--r); padding:6px 14px; font-size:12px; color:var(--ts); }
+    .home-hint svg { width:12px; height:12px; stroke:var(--green); fill:none; stroke-width:2; }
+    .home-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:22px 32px; border-bottom:0.5px solid var(--bd); }
+    .stat-card { background:var(--bg2); border-radius:var(--r); padding:16px 18px; border-left:3px solid var(--green-light); }
+    .stat-card:first-child { border-left-color:var(--green); }
+    .stat-val { font-size:24px; font-weight:500; letter-spacing:-0.02em; }
+    .stat-lbl { font-size:11px; color:var(--ts); margin-top:3px; }
+    .inbox-alert { margin:18px 32px 0; padding:13px 18px; background:var(--green-light); border-radius:var(--r); display:flex; align-items:center; gap:12px; cursor:pointer; transition:opacity .12s; border-left:3px solid var(--green); }
+    .inbox-alert:hover { opacity:.85; }
+    .inbox-alert svg { width:18px; height:18px; stroke:var(--green); fill:none; stroke-width:1.5; flex-shrink:0; }
+    .inbox-alert-title { font-size:13px; font-weight:500; color:var(--green-text); }
+    .inbox-alert-sub { font-size:11px; color:var(--green); margin-top:1px; }
+    .inbox-alert-arrow { color:var(--green); font-size:18px; margin-left:auto; }
+    .home-recent { padding:22px 32px 28px; }
+    .section-lbl { font-size:10px; font-weight:500; color:var(--tt); text-transform:uppercase; letter-spacing:.07em; margin-bottom:12px; }
+
+    /* FILE LIST */
+    .file-list { display:flex; flex-direction:column; gap:6px; padding:18px 22px; }
+    .file-item { display:flex; align-items:center; gap:14px; padding:12px 16px; border:0.5px solid var(--bd); border-radius:var(--r); cursor:pointer; transition:background .12s, border-color .12s, transform .1s; background:var(--bg1); }
+    .file-item:hover { background:var(--bg2); border-color:var(--bdm); transform:translateX(2px); }
+    .file-icon { width:34px; height:34px; border-radius:8px; background:var(--green-light); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .file-icon svg { width:16px; height:16px; stroke:var(--green); fill:none; stroke-width:1.5; }
+    .file-info { flex:1; min-width:0; }
+    .file-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .file-meta { font-size:11px; color:var(--tt); margin-top:2px; }
+    .file-date { font-size:11px; color:var(--ts); flex-shrink:0; background:var(--bg2); padding:3px 8px; border-radius:6px; }
+    .file-action { padding:5px 12px; background:var(--green); color:white; border:none; border-radius:6px; font-size:11px; font-weight:500; cursor:pointer; flex-shrink:0; transition:background .12s; }
+    .file-action:hover { background:var(--green-dark); }
+    .empty-msg { text-align:center; padding:56px 20px; font-size:13px; color:var(--tt); line-height:1.7; }
+
+    /* PDF VIEWER */
+    .viewer-wrap { display:flex; flex-direction:column; height:100%; }
+    .viewer-toolbar { display:flex; gap:8px; padding:10px 20px; border-bottom:0.5px solid var(--bd); flex-shrink:0; }
+    .viewer-frame { flex:1; border:none; background:var(--bg3); }
+
+    /* SETTINGS */
+    .settings-wrap { padding:28px; max-width:520px; }
+    .settings-title { font-size:17px; font-weight:500; margin-bottom:24px; }
+    .settings-section { margin-bottom:28px; padding-bottom:24px; border-bottom:0.5px solid var(--bd); }
+    .settings-section:last-child { border-bottom:none; }
+    .settings-section-title { font-size:12px; font-weight:500; color:var(--ts); text-transform:uppercase; letter-spacing:.04em; margin-bottom:16px; }
+    .field-group { margin-bottom:16px; }
+    .field-lbl { font-size:11px; font-weight:500; color:var(--tt); text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; display:block; }
+    .field-input { width:100%; padding:9px 12px; background:var(--bg2); border:0.5px solid var(--bdm); border-radius:var(--r); font-size:13px; color:var(--tp); }
+    .field-input:focus { outline:none; border-color:var(--green); }
+    .field-input.mono { font-family:'DM Mono', monospace; font-size:12px; }
+    .field-hint { font-size:11px; color:var(--tt); margin-top:5px; line-height:1.5; }
+    .btn-save { padding:9px 20px; background:var(--green); color:white; border:none; border-radius:var(--r); font-size:13px; font-weight:500; cursor:pointer; transition:background .12s; }
+    .btn-save:hover { background:var(--green-dark); }
+    .btn-logout { padding:9px 20px; background:none; color:var(--ts); border:0.5px solid var(--bdm); border-radius:var(--r); font-size:13px; cursor:pointer; transition:background .12s; }
+    .btn-logout:hover { background:var(--bg2); }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index:200; }
+    .modal { background:var(--bg1); border-radius:var(--rl); border:0.5px solid var(--bdm); width:min(500px,92vw); overflow:hidden; max-height:90vh; display:flex; flex-direction:column; }
+    .modal-header { padding:14px 20px; border-bottom:0.5px solid var(--bd); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .modal-title { font-size:14px; font-weight:500; }
+    .modal-close { background:none; border:none; cursor:pointer; font-size:20px; color:var(--tt); line-height:1; padding:0 2px; }
+    .modal-body { padding:20px; overflow-y:auto; flex:1; }
+    .modal-footer { padding:12px 20px; border-top:0.5px solid var(--bd); display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; }
+    .btn-cancel { padding:7px 16px; background:none; border:0.5px solid var(--bdm); border-radius:var(--r); font-size:13px; color:var(--ts); cursor:pointer; }
+    .btn-cancel:hover { background:var(--bg2); }
+    .btn-confirm { padding:7px 16px; background:var(--green); border:none; border-radius:var(--r); font-size:13px; color:white; font-weight:500; cursor:pointer; }
+    .btn-confirm:hover { background:var(--green-dark); }
+    .btn-confirm:disabled { background:var(--bg3); color:var(--tt); cursor:not-allowed; }
+    .step-row { display:flex; align-items:center; gap:6px; margin-bottom:18px; }
+    .step-dot { width:7px; height:7px; border-radius:50%; background:var(--bd); }
+    .step-dot.on { background:var(--green); }
+    .step-line { flex:1; height:0.5px; background:var(--bd); }
+    .step-txt { font-size:11px; color:var(--tt); margin-left:4px; }
+    .analyzing { display:flex; flex-direction:column; align-items:center; gap:10px; padding:28px 0; }
+    .spin { width:22px; height:22px; border:2px solid var(--bd); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .analyzing-txt { font-size:13px; color:var(--ts); }
+    .analyzing-sub { font-size:11px; color:var(--tt); }
+    .ai-box { border:0.5px solid var(--bd); border-radius:var(--r); overflow:hidden; }
+    .ai-box-header { padding:8px 14px; background:var(--bg2); border-bottom:0.5px solid var(--bd); display:flex; align-items:center; gap:8px; }
+    .ai-tag { font-size:10px; font-weight:500; color:var(--green-text); background:var(--green-light); padding:2px 7px; border-radius:10px; }
+    .ai-box-sub { font-size:12px; color:var(--ts); }
+    .ai-box-body { padding:14px; display:flex; flex-direction:column; gap:12px; }
+    .ai-field label { display:block; font-size:10px; font-weight:500; color:var(--tt); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+    .ai-field input, .ai-field select { width:100%; padding:7px 10px; background:var(--bg2); border:0.5px solid var(--bdm); border-radius:var(--r); font-size:13px; color:var(--tp); }
+    .ai-field input.mono { font-family:'DM Mono', monospace; font-size:12px; }
+    .ai-field input:focus, .ai-field select:focus { outline:none; border-color:var(--green); }
+    .ai-hint { font-size:11px; color:var(--tt); margin-top:4px; }
+    .new-folder-row { display:flex; gap:6px; margin-top:6px; }
+    .new-folder-row input { flex:1; padding:6px 10px; background:var(--bg2); border:0.5px solid var(--bdm); border-radius:var(--r); font-size:12px; color:var(--tp); }
+    .new-folder-row input:focus { outline:none; border-color:var(--green); }
+    .new-folder-row button { padding:6px 12px; background:var(--green); color:white; border:none; border-radius:var(--r); font-size:12px; cursor:pointer; }
+    .error-box { font-size:12px; color:#c0392b; margin-bottom:12px; padding:8px 12px; background:#fdecea; border-radius:var(--r); line-height:1.5; }
+
+    /* PRESENT MODE */
+    #present-mode { display:none; position:fixed; inset:0; background:var(--bg1); flex-direction:column; z-index:300; }
+    #present-mode.visible { display:flex; }
+    .present-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 20px; border-bottom:0.5px solid var(--bd); flex-shrink:0; }
+    .present-title { font-size:13px; font-weight:500; }
+    .present-body { flex:1; display:flex; }
+    .present-body iframe { flex:1; border:none; }
+
+    /* MOBILE */
+    #drawer-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:90; }
+    #drawer-overlay.visible { display:block; }
+    .mobile-menu-btn { display:none; align-items:center; justify-content:center; width:36px; height:36px; background:none; border:none; cursor:pointer; color:var(--ts); flex-shrink:0; }
+    .mobile-menu-btn svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.5; }
+    @media (max-width:680px) {
+      #sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(-100%); z-index:95; box-shadow:4px 0 20px rgba(0,0,0,.15); }
+      #sidebar.open { transform:translateX(0); }
+      .mobile-menu-btn { display:flex; }
+      .home-stats { grid-template-columns:1fr 1fr; }
+      .home-hero,.home-recent,.home-stats { padding-left:18px; padding-right:18px; }
+      .inbox-alert { margin-left:18px; margin-right:18px; }
+      .settings-wrap { padding:18px; }
+    }
+
+    /* MISC */
+    .loading-full { display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; gap:12px; color:var(--tt); font-size:13px; }
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--tp); color:var(--bg1); padding:10px 20px; border-radius:20px; font-size:13px; z-index:400; opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; }
+    .toast.show { opacity:1; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" width="26" height="26">
+        <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+      </svg>
+    </div>
+    <div class="login-title">MediDocs</div>
+    <div class="login-sub">La tua cartella clinica personale.<br>Accedi con Google per continuare.</div>
+    <button class="login-btn" onclick="signIn()">
+      <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Accedi con Google
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="sidebar">
+    <div class="sidebar-header" onclick="goHome()" title="Home">
+      <div class="logo-row">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        </div>
+        <div>
+          <div class="logo-name">MediDocs</div>
+          <div class="logo-count" id="logo-count">Caricamento...</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-lbl">Categorie</div>
+      <div id="tree-container"><div class="loading-full"><div class="spin"></div></div></div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn-upload" onclick="openInbox()" title="Documenti da archiviare">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+        Da archiviare
+      </button>
+      <button class="btn-gear" onclick="goSettings()" title="Impostazioni">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div class="topbar">
+      <button class="mobile-menu-btn" onclick="toggleDrawer()">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb" id="topbar-bc"></div>
+        <div class="topbar-title" id="topbar-title">MediDocs</div>
+      </div>
+      <div class="topbar-right" id="topbar-right"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div id="drawer-overlay" onclick="toggleDrawer()"></div>
+
+<!-- ARCHIVE MODAL -->
+<div class="modal-overlay" id="archive-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Archivia documento</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- PRESENT MODE -->
+<div id="present-mode">
+  <div class="present-bar">
+    <div class="present-title" id="present-title"></div>
+    <button class="btn-sm" onclick="exitPresent()">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      Esci
+    </button>
+  </div>
+  <div class="present-body"><iframe id="present-frame" src=""></iframe></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════
+// CONFIGURAZIONE
+// ═══════════════════════════════════
+const GOOGLE_CLIENT_ID = '463785232470-n0i8pm9tv86rscujp71c25ommuej08ss.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+const ROOT_NAME   = 'MediDocs';
+const INBOX_NAME  = '_Da archiviare';
+const DAPI        = 'https://www.googleapis.com/drive/v3';
+const DAPI_UP     = 'https://www.googleapis.com/upload/drive/v3';
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+const S = {
+  token: null,
+  rootId: null, inboxId: null,
+  tree: [], inboxFiles: [],
+  recent: JSON.parse(localStorage.getItem('md_recent') || '[]'),
+  view: 'home',
+  activeFolderId: null, activePath: [],
+  folderFiles: [], currentDoc: null,
+  totalDocs: 0,
+  claudeKey: localStorage.getItem('md_claude') || '',
+  patientName: localStorage.getItem('md_patient') || '',
+  archiveFileId: null,
+};
+
+const openNodes = new Set();
+
+// ═══════════════════════════════════
+// GOOGLE AUTH
+// ═══════════════════════════════════
+let tokenClient;
+function signIn() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp) => {
+      if (resp.error) { alert('Errore autenticazione: ' + resp.error); return; }
+      S.token = resp.access_token;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      await initApp();
+    },
+  });
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+function signOut() {
+  if (S.token) google.accounts.oauth2.revoke(S.token, () => {});
+  S.token = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+  toast('Disconnesso');
+}
+
+// ═══════════════════════════════════
+// DRIVE HELPERS
+// ═══════════════════════════════════
+async function dget(path) {
+  const r = await fetch(DAPI + path, { headers: { Authorization: `Bearer ${S.token}` } });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function dpatch(id, data) {
+  const r = await fetch(`${DAPI}/files/${id}?fields=id,name,appProperties`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${S.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function dmkdir(name, parentId) {
+  const r = await fetch(`${DAPI}/files`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${S.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function dmove(fileId, fromId, toId) {
+  const r = await fetch(`${DAPI}/files/${fileId}?addParents=${toId}&removeParents=${fromId}&fields=id`, {
+    method: 'PATCH', headers: { Authorization: `Bearer ${S.token}` },
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function dblob(fileId) {
+  const r = await fetch(`${DAPI}/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${S.token}` } });
+  if (!r.ok) throw new Error(await r.text());
+  return URL.createObjectURL(await r.blob());
+}
+async function db64(fileId) {
+  const r = await fetch(`${DAPI}/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${S.token}` } });
+  if (!r.ok) throw new Error(await r.text());
+  const buf = await r.arrayBuffer();
+  let bin = ''; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+async function initApp() {
+  goHome();
+  try {
+    // trova o crea MediDocs root
+    const q1 = enc(`name='${ROOT_NAME}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`);
+    const r1 = await dget(`/files?q=${q1}&fields=files(id)`);
+    S.rootId = r1.files[0]?.id || (await dmkdir(ROOT_NAME, 'root')).id;
+    // trova o crea _Da archiviare
+    const q2 = enc(`name='${INBOX_NAME}' and mimeType='application/vnd.google-apps.folder' and '${S.rootId}' in parents and trashed=false`);
+    const r2 = await dget(`/files?q=${q2}&fields=files(id)`);
+    S.inboxId = r2.files[0]?.id || (await dmkdir(INBOX_NAME, S.rootId)).id;
+    await Promise.all([loadTree(), loadInbox()]);
+    renderSidebar();
+    renderHome();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="empty-msg">Errore connessione a Google Drive.<br><small>${e.message}</small></div>`;
+  }
+}
+
+// ═══════════════════════════════════
+// TREE
+// ═══════════════════════════════════
+async function loadTree() {
+  S.tree = await buildTree(S.rootId, [S.inboxId]);
+  S.totalDocs = sumDocs(S.tree);
+  document.getElementById('logo-count').textContent = `${S.totalDocs} document${S.totalDocs !== 1 ? 'i' : 'o'}`;
+}
+async function buildTree(parentId, exclude = []) {
+  const q = enc(`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res = await dget(`/files?q=${q}&fields=files(id,name)&orderBy=name`);
+  const nodes = [];
+  for (const f of res.files) {
+    if (exclude.includes(f.id)) continue;
+    const [children, docCount] = await Promise.all([buildTree(f.id), countPdfs(f.id)]);
+    nodes.push({ id: f.id, name: f.name, children, docCount });
+  }
+  return nodes;
+}
+async function countPdfs(folderId) {
+  const q = enc(`'${folderId}' in parents and mimeType='application/pdf' and trashed=false`);
+  const r = await dget(`/files?q=${q}&fields=files(id)&pageSize=1000`);
+  return r.files.length;
+}
+function sumDocs(nodes) {
+  return nodes.reduce((n, nd) => n + nd.docCount + sumDocs(nd.children), 0);
+}
+
+// ═══════════════════════════════════
+// INBOX
+// ═══════════════════════════════════
+async function loadInbox() {
+  const q = enc(`'${S.inboxId}' in parents and trashed=false`);
+  const r = await dget(`/files?q=${q}&fields=files(id,name,createdTime,appProperties)&orderBy=createdTime desc`);
+  S.inboxFiles = r.files;
+}
+
+// ═══════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════
+function renderSidebar() {
+  const c = document.getElementById('tree-container');
+  if (!S.tree.length) {
+    c.innerHTML = '<div style="padding:14px 16px;font-size:12px;color:var(--tt)">Nessuna cartella trovata in MediDocs su Drive.<br>Crea le cartelle direttamente su Drive.</div>';
+    return;
+  }
+  c.innerHTML = '';
+  S.tree.forEach(n => c.appendChild(mkNavNode(n, 0)));
+}
+function mkNavNode(node, depth) {
+  const wrap = document.createElement('div');
+  const row = document.createElement('div');
+  row.className = 'nav-row' + (S.activeFolderId === node.id ? ' active' : '');
+  row.style.paddingLeft = (12 + depth * 14) + 'px';
+  const tog = document.createElement('div');
+  tog.className = 'nav-toggle' + (!node.children.length ? ' leaf' : '') + (openNodes.has(node.id) ? ' open' : '');
+  tog.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>`;
+  const lbl = document.createElement('span');
+  lbl.className = 'nav-text'; lbl.textContent = node.name;
+  const total = node.docCount + sumDocs(node.children);
+  const bdg = document.createElement('span');
+  bdg.className = 'nav-badge'; bdg.textContent = total;
+  if (!total) bdg.style.opacity = '0';
+  row.append(tog, lbl, bdg);
+  wrap.appendChild(row);
+  let childWrap = null;
+  if (node.children.length) {
+    childWrap = document.createElement('div');
+    childWrap.style.display = openNodes.has(node.id) ? 'block' : 'none';
+    node.children.forEach(ch => childWrap.appendChild(mkNavNode(ch, depth + 1)));
+    wrap.appendChild(childWrap);
+  }
+  row.onclick = () => {
+    if (node.children.length) {
+      const isOpen = openNodes.has(node.id);
+      isOpen ? openNodes.delete(node.id) : openNodes.add(node.id);
+      tog.classList.toggle('open', !isOpen);
+      if (childWrap) childWrap.style.display = isOpen ? 'none' : 'block';
+    }
+    selectFolder(node);
+    closeMobileDrawer();
+  };
+  return wrap;
+}
+
+// ═══════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════
+function setTopbar(title, bc, actions) {
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-bc').textContent = bc;
+  const r = document.getElementById('topbar-right');
+  r.innerHTML = '';
+  actions.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn-sm' + (a.primary ? ' primary' : '');
+    b.innerHTML = ico(a.icon) + a.label;
+    b.onclick = a.action;
+    r.appendChild(b);
+  });
+}
+function goHome() {
+  S.view = 'home'; S.activeFolderId = null; S.activePath = []; S.currentDoc = null;
+  renderSidebar();
+  setTopbar('MediDocs', '', []);
+  renderHome();
+}
+async function selectFolder(node) {
+  S.view = 'list'; S.activeFolderId = node.id; S.currentDoc = null;
+  S.activePath = findPath(S.tree, node.id) || [node.name];
+  renderSidebar();
+  const bc = S.activePath.slice(0,-1).join(' › ');
+  const title = S.activePath[S.activePath.length-1];
+  setTopbar(title, bc, []);
+  renderLoading();
+  await loadFolderFiles(node.id);
+  renderFileList();
+}
+async function loadFolderFiles(id) {
+  const q = enc(`'${id}' in parents and mimeType='application/pdf' and trashed=false`);
+  const r = await dget(`/files?q=${q}&fields=files(id,name,createdTime,appProperties)&orderBy=name desc`);
+  S.folderFiles = r.files.map(f => ({
+    id: f.id,
+    name: f.appProperties?.displayName || f.name.replace(/\.pdf$/i,'').replace(/_/g,' '),
+    filename: f.name,
+    date: f.appProperties?.docDate || fmtDate(f.createdTime),
+    lab: f.appProperties?.labName || '',
+  })).sort((a, b) => b.filename.localeCompare(a.filename));
+}
+async function openDoc(docJson) {
+  const doc = typeof docJson === 'string' ? JSON.parse(docJson) : docJson;
+  S.view = 'doc'; S.currentDoc = doc;
+  addRecent(doc);
+  const bc = S.activePath.join(' › ');
+  setTopbar(doc.name, bc, [
+    { label: 'Indietro', icon: 'back', action: () => { S.view='list'; renderFileList(); setTopbar(S.activePath[S.activePath.length-1], S.activePath.slice(0,-1).join(' › '),[]) } },
+    { label: 'Mostra al medico', icon: 'present', primary: true, action: () => enterPresent(doc) },
+  ]);
+  renderLoading();
+  try { renderViewer(doc, await dblob(doc.id)); }
+  catch(e) { document.getElementById('content').innerHTML = `<div class="empty-msg">Impossibile aprire il documento.<br><small>${e.message}</small></div>`; }
+}
+async function openInbox() {
+  S.view = 'inbox'; S.activeFolderId = null; renderSidebar();
+  setTopbar('_Da archiviare', 'In attesa di archiviazione', []);
+  renderLoading(); await loadInbox(); renderInbox(); closeMobileDrawer();
+}
+function goSettings() {
+  S.view='settings'; S.activeFolderId=null; renderSidebar();
+  setTopbar('Impostazioni','',[]); renderSettings(); closeMobileDrawer();
+}
+
+// ═══════════════════════════════════
+// RENDER
+// ═══════════════════════════════════
+function renderLoading() {
+  document.getElementById('content').innerHTML = `<div class="loading-full"><div class="spin"></div><span>Caricamento...</span></div>`;
+}
+function renderHome() {
+  const ic = S.inboxFiles.length;
+  const recentHtml = S.recent.length
+    ? S.recent.map(d => `<div class="file-item" onclick='openRecentDoc(${JSON.stringify(JSON.stringify(d))})'>
+        <div class="file-icon">${ico('pdf')}</div>
+        <div class="file-info"><div class="file-name">${esc(d.name)}</div><div class="file-meta">${esc(d.lab)}</div></div>
+        <div class="file-date">${esc(d.date)}</div></div>`).join('')
+    : '<div style="font-size:13px;color:var(--tt);padding:4px 0">Nessun documento consultato di recente.</div>';
+  const inboxHtml = ic ? `<div class="inbox-alert" onclick="openInbox()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" width="18" height="18"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+    <div><div class="inbox-alert-title">${ic} document${ic>1?'i':'o'} da archiviare</div><div class="inbox-alert-sub">Tocca per aprire _Da archiviare</div></div>
+    <div class="inbox-alert-arrow">›</div></div>` : '';
+  document.getElementById('content').innerHTML = `
+    <div class="home-hero">
+      <div class="home-hero-row">
+        <div class="home-hero-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" width="24" height="24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg></div>
+        <div>
+          <div class="home-hero-title">Benvenuto in MediDocs</div>
+          <div class="home-hero-sub">La tua cartella clinica personale. Seleziona una categoria nel menu laterale per consultare i tuoi documenti.</div>
+          <div class="home-hint"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--green)" stroke-width="2"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg> Usa il menu a sinistra per navigare</div>
+        </div>
+      </div>
+    </div>
+    <div class="home-stats">
+      <div class="stat-card"><div class="stat-val">${S.totalDocs}</div><div class="stat-lbl">Documenti totali</div></div>
+      <div class="stat-card"><div class="stat-val">${countFolders(S.tree)}</div><div class="stat-lbl">Cartelle con documenti</div></div>
+      <div class="stat-card"><div class="stat-val">${ic}</div><div class="stat-lbl">Da archiviare</div></div>
+    </div>
+    ${inboxHtml}
+    <div class="home-recent" style="margin-top:${ic?'16px':'0'}">
+      <div class="section-lbl">Consultati di recente</div>
+      <div class="file-list" style="padding:0">${recentHtml}</div>
+    </div>`;
+}
+function renderFileList() {
+  if (!S.folderFiles.length) {
+    document.getElementById('content').innerHTML = '<div class="empty-msg">Nessun documento PDF in questa cartella.</div>'; return;
+  }
+  document.getElementById('content').innerHTML = `<div class="file-list">${
+    S.folderFiles.map(d => `<div class="file-item" onclick='openDoc(${JSON.stringify(JSON.stringify(d))})'>
+      <div class="file-icon">${ico('pdf')}</div>
+      <div class="file-info"><div class="file-name">${esc(d.name)}</div><div class="file-meta">${esc(d.lab)}</div></div>
+      <div class="file-date">${esc(d.date)}</div></div>`).join('')
+  }</div>`;
+}
+function renderInbox() {
+  if (!S.inboxFiles.length) {
+    document.getElementById('content').innerHTML = `<div class="empty-msg">Nessun documento in attesa.<br>Sposta i PDF da archiviare nella cartella <strong>_Da archiviare</strong> su Google Drive.</div>`; return;
+  }
+  document.getElementById('content').innerHTML = `<div class="file-list">${
+    S.inboxFiles.map(f => `<div class="file-item">
+      <div class="file-icon">${ico('pdf')}</div>
+      <div class="file-info"><div class="file-name">${esc(f.name)}</div><div class="file-meta">${fmtDate(f.createdTime)}</div></div>
+      <button class="file-action" onclick="startArchive('${f.id}','${esc(f.name)}')">Archivia</button>
+    </div>`).join('')
+  }</div>`;
+}
+function renderViewer(doc, url) {
+  document.getElementById('content').innerHTML = `
+    <div class="viewer-wrap">
+      <div class="viewer-toolbar">
+        <a href="${url}" download="${esc(doc.filename)}" class="btn-sm">${ico('download')} Scarica PDF</a>
+      </div>
+      <iframe class="viewer-frame" src="${url}"></iframe>
+    </div>`;
+}
+function renderSettings() {
+  document.getElementById('content').innerHTML = `
+    <div class="settings-wrap">
+      <div class="settings-title">Impostazioni</div>
+      <div class="settings-section">
+        <div class="settings-section-title">Profilo paziente</div>
+        <div class="field-group">
+          <label class="field-lbl">Nome paziente</label>
+          <input class="field-input" id="s-patient" value="${esc(S.patientName)}" placeholder="Es. Mario_Rossi">
+          <div class="field-hint">Formato consigliato: Nome_Cognome. Usato nel nome file: YYYYMMDD_Nome_Cognome_tipo_descrizione.pdf</div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Claude AI</div>
+        <div class="field-group">
+          <label class="field-lbl">Claude API Key</label>
+          <input class="field-input mono" id="s-claude" type="password" value="${esc(S.claudeKey)}" placeholder="sk-ant-api03-...">
+          <div class="field-hint">Necessaria per l'analisi automatica dei PDF in _Da archiviare. Salvata solo su questo dispositivo.</div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <button class="btn-save" onclick="saveSettings()">Salva impostazioni</button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Account Google</div>
+        <button class="btn-logout" onclick="signOut()">Disconnetti</button>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════
+// ARCHIVE MODAL
+// ═══════════════════════════════════
+async function startArchive(fileId, fileName) {
+  S.archiveFileId = fileId;
+  document.getElementById('archive-modal').style.display = 'flex';
+  renderModalStep('analyzing');
+  try {
+    if (!S.claudeKey) throw new Error('Configura la Claude API Key nelle Impostazioni.');
+    const b64 = await db64(fileId);
+    const result = await claudeAnalyze(b64);
+    renderModalStep('confirm', result);
+  } catch(e) {
+    renderModalStep('confirm', { error: e.message });
+  }
+}
+function renderModalStep(step, data = {}) {
+  const body = document.getElementById('modal-body');
+  const foot = document.getElementById('modal-footer');
+  const stepHtml = `<div class="step-row">
+    <div class="step-dot on"></div><div class="step-line"></div>
+    <div class="step-dot ${step==='confirm'?'on':''}"></div>
+    <span class="step-txt">${step==='analyzing'?'Analisi AI in corso…':'Conferma archiviazione'}</span>
+  </div>`;
+  if (step === 'analyzing') {
+    body.innerHTML = stepHtml + `<div class="analyzing"><div class="spin"></div><div class="analyzing-txt">Claude sta analizzando il documento…</div><div class="analyzing-sub">Estrazione di data, tipo esame, struttura</div></div>`;
+    foot.innerHTML = `<button class="btn-cancel" onclick="closeModal()">Annulla</button>`;
+    return;
+  }
+  const opts = buildFolderOpts(S.tree, '');
+  const pat = S.patientName || 'Nome_Cognome';
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const fn = data.filename || `${today}_${pat}_documento.pdf`;
+  const dn = data.displayName || fn.replace(/\.pdf$/i,'').replace(/_/g,' ');
+  const errHtml = data.error ? `<div class="error-box">Analisi AI non disponibile: ${esc(data.error)}<br>Compila manualmente i campi.</div>` : '';
+  body.innerHTML = stepHtml + errHtml + `
+    <div class="ai-box">
+      <div class="ai-box-header"><span class="ai-tag">AI</span><span class="ai-box-sub">Dati rilevati – conferma o modifica</span></div>
+      <div class="ai-box-body">
+        <div class="ai-field">
+          <label>Nome file (su Google Drive)</label>
+          <input class="mono" id="a-fn" value="${esc(fn)}">
+          <div class="ai-hint">YYYYMMDD_Nome_Cognome_tipo_descrizione.pdf</div>
+        </div>
+        <div class="ai-field">
+          <label>Nome visualizzato nell'app</label>
+          <input id="a-dn" value="${esc(dn)}">
+        </div>
+        <div class="ai-field">
+          <label>Struttura sanitaria / medico</label>
+          <input id="a-lab" value="${esc(data.labName||'')}">
+        </div>
+        <div class="ai-field">
+          <label>Data documento</label>
+          <input id="a-date" value="${esc(data.docDate||'')}">
+        </div>
+        <div class="ai-field">
+          <label>Cartella di destinazione</label>
+          <select id="a-folder">${opts}</select>
+        </div>
+        <div class="ai-field">
+          <label>Crea nuova cartella (dentro la cartella selezionata)</label>
+          <div class="new-folder-row">
+            <input id="a-nf" placeholder="Nome nuova cartella">
+            <button onclick="createFolderFromModal()">Crea</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  if (data.folderId) {
+    const sel = document.getElementById('a-folder');
+    if (sel) { sel.value = data.folderId; }
+  }
+  foot.innerHTML = `<button class="btn-cancel" onclick="closeModal()">Annulla</button>
+    <button class="btn-confirm" id="a-confirm" onclick="doArchive()">Archivia su Drive</button>`;
+}
+function buildFolderOpts(nodes, prefix) {
+  return nodes.map(n => `<option value="${n.id}">${prefix}${esc(n.name)}</option>${buildFolderOpts(n.children, prefix+n.name+' / ')}`).join('');
+}
+async function createFolderFromModal() {
+  const name = document.getElementById('a-nf').value.trim();
+  const parentId = document.getElementById('a-folder').value || S.rootId;
+  if (!name) return;
+  try {
+    const f = await dmkdir(name, parentId);
+    toast(`Cartella "${name}" creata`);
+    await loadTree(); renderSidebar();
+    const sel = document.getElementById('a-folder');
+    const opt = document.createElement('option');
+    opt.value = f.id; opt.textContent = name;
+    sel.appendChild(opt); sel.value = f.id;
+    document.getElementById('a-nf').value = '';
+  } catch(e) { alert('Errore: ' + e.message); }
+}
+async function doArchive() {
+  const fn   = document.getElementById('a-fn').value.trim();
+  const dn   = document.getElementById('a-dn').value.trim();
+  const lab  = document.getElementById('a-lab').value.trim();
+  const date = document.getElementById('a-date').value.trim();
+  const fid  = document.getElementById('a-folder').value;
+  if (!fn || !fid) { alert('Inserisci nome file e cartella.'); return; }
+  const btn = document.getElementById('a-confirm');
+  btn.disabled = true; btn.textContent = 'Archiviazione…';
+  try {
+    await dpatch(S.archiveFileId, {
+      name: fn.match(/\.pdf$/i) ? fn : fn + '.pdf',
+      appProperties: { displayName: dn, labName: lab, docDate: date },
+    });
+    await dmove(S.archiveFileId, S.inboxId, fid);
+    closeModal(); toast('Documento archiviato');
+    await Promise.all([loadTree(), loadInbox()]);
+    renderSidebar(); openInbox();
+  } catch(e) { btn.disabled=false; btn.textContent='Archivia su Drive'; alert('Errore: '+e.message); }
+}
+function closeModal() { document.getElementById('archive-modal').style.display='none'; }
+
+// ═══════════════════════════════════
+// CLAUDE AI
+// ═══════════════════════════════════
+async function claudeAnalyze(pdfBase64) {
+  const pat = S.patientName || 'Paziente';
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const folderList = flatFolders(S.tree).map(f => `"${f.name}" id:${f.id}`).join(' | ');
+  const prompt = `Analizza questo documento medico PDF. Rispondi SOLO con JSON valido, nessun testo aggiuntivo, nessun markdown.
+
+Cartelle disponibili: ${folderList}
+
+JSON richiesto:
+{
+  "filename": "AAAAMMGG_${pat.replace(/\s+/g,'_')}_tipo_descrizione.pdf",
+  "displayName": "Descrizione leggibile senza nome paziente",
+  "labName": "Struttura sanitaria o medico",
+  "docDate": "data in formato italiano es. 27 mar 2026",
+  "folderId": "id cartella più appropriata tra quelle disponibili"
+}
+
+Note: usa la data del documento se presente, altrimenti ${today}. displayName: es. "Emocromo completo – 27 mar 2026".`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': S.claudeKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+        { type: 'text', text: prompt },
+      ]}],
+    }),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  const d = await resp.json();
+  const txt = d.content.find(c=>c.type==='text')?.text || '{}';
+  try { return JSON.parse(txt.replace(/```json|```/g,'').trim()); }
+  catch { return {}; }
+}
+
+function flatFolders(nodes, out=[]) {
+  nodes.forEach(n => { out.push({id:n.id,name:n.name}); flatFolders(n.children,out); });
+  return out;
+}
+function countFolders(nodes) {
+  return nodes.reduce((n, nd) => n + (nd.docCount > 0 ? 1 : 0) + countFolders(nd.children), 0);
+}
+
+// ═══════════════════════════════════
+// PRESENT MODE
+// ═══════════════════════════════════
+function enterPresent(doc) {
+  document.getElementById('present-title').textContent = doc.name + ' · ' + doc.date;
+  dblob(doc.id).then(url => document.getElementById('present-frame').src = url);
+  document.getElementById('present-mode').classList.add('visible');
+}
+function exitPresent() {
+  document.getElementById('present-mode').classList.remove('visible');
+  document.getElementById('present-frame').src = '';
+}
+
+// ═══════════════════════════════════
+// RECENT DOCS
+// ═══════════════════════════════════
+function addRecent(doc) {
+  const entry = { id:doc.id, name:doc.name, filename:doc.filename, date:doc.date, lab:doc.lab, folderId:S.activeFolderId };
+  S.recent = [entry, ...S.recent.filter(r=>r.id!==doc.id)].slice(0,5);
+  localStorage.setItem('md_recent', JSON.stringify(S.recent));
+}
+async function openRecentDoc(docJsonStr) {
+  const doc = JSON.parse(docJsonStr);
+  S.activeFolderId = doc.folderId;
+  S.activePath = findPath(S.tree, doc.folderId) || [doc.name];
+  S.view = 'doc'; S.currentDoc = doc;
+  addRecent(doc);
+  setTopbar(doc.name, S.activePath.join(' › '), [
+    { label:'Indietro', icon:'back', action:goHome },
+    { label:'Mostra al medico', icon:'present', primary:true, action:()=>enterPresent(doc) },
+  ]);
+  renderLoading();
+  try { renderViewer(doc, await dblob(doc.id)); }
+  catch(e) { document.getElementById('content').innerHTML=`<div class="empty-msg">Impossibile aprire il documento.</div>`; }
+}
+
+// ═══════════════════════════════════
+// SETTINGS SAVE
+// ═══════════════════════════════════
+function saveSettings() {
+  S.claudeKey = document.getElementById('s-claude').value.trim();
+  S.patientName = document.getElementById('s-patient').value.trim();
+  localStorage.setItem('md_claude', S.claudeKey);
+  localStorage.setItem('md_patient', S.patientName);
+  toast('Impostazioni salvate');
+}
+
+// ═══════════════════════════════════
+// MOBILE DRAWER
+// ═══════════════════════════════════
+function toggleDrawer() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('visible');
+}
+function closeMobileDrawer() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('visible');
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function findPath(nodes, id, path=[]) {
+  for (const n of nodes) {
+    const p = [...path, n.name];
+    if (n.id===id) return p;
+    if (n.children.length) { const f=findPath(n.children,id,p); if(f) return f; }
+  }
+  return null;
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'});
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function enc(s) { return encodeURIComponent(s); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+function ico(name) {
+  const icons = {
+    pdf:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="15" height="15"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+    back:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><polyline points="15 18 9 12 15 6"/></svg>`,
+    present:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M1 3h22v15H1zM8 22h8M12 18v4"/></svg>`,
+    download:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>`,
+  };
+  return icons[name]||'';
+}
+</script>
+</body>
+</html>
